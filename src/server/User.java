@@ -6,7 +6,7 @@ public class User {//User basic data
 	private String ip;
 	private String port;
 	
-	public User(String login, boolean avaiable, String ip, String port) {
+	public User(String login, String ip, String port) {
 		this.login = login;
 		this.ip = ip;
 		this.port = port;
