@@ -4,9 +4,9 @@ public class User {//User basic data
 	private String login;
 	private boolean avaiable;
 	private String ip;
-	private String port;
+	private int port;
 	
-	public User(String login, String ip, String port) {
+	public User(String login, String ip, int port) {
 		this.login = login;
 		this.ip = ip;
 		this.port = port;
@@ -29,10 +29,10 @@ public class User {//User basic data
 	public void setIp(String ip) {
 		this.ip = ip;
 	}
-	public String getPort() {
+	public int getPort() {
 		return port;
 	}
-	public void setPort(String port) {
+	public void setPort(int port) {
 		this.port = port;
 	}
 	
