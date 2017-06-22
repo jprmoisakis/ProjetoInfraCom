@@ -5,9 +5,9 @@ public class User {//User basic data
 	private String password;
 	private boolean avaiable;
 	private String ip;
-	private int port;
+	private String port;
 	
-	public User(String username,String password, String ip, int port) {
+	public User(String username,String password, String ip, String port) {
 		this.username = username;
 		this.password = password;
 		this.ip = ip;
@@ -20,7 +20,6 @@ public class User {//User basic data
 	public void setUsername(String login) {
 		this.username = login;
 	}
-	
 	public String getPassword() {
 		return password;
 	}
@@ -39,10 +38,10 @@ public class User {//User basic data
 	public void setIp(String ip) {
 		this.ip = ip;
 	}
-	public int getPort() {
+	public String getPort() {
 		return port;
 	}
-	public void setPort(int port) {
+	public void setPort(String port) {
 		this.port = port;
 	}
 	

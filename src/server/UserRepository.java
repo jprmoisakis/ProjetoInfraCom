@@ -30,5 +30,11 @@ public class UserRepository {// Manage users
 		this.index++;
 	}
 	
-	
+	public boolean exists(String username){
+		boolean r = false;
+		for(int i = 0;i<this.index;i++){
+			if(this.users[i].getUsername() == username) r = true;
+		}
+		return r;
+	}
 }
