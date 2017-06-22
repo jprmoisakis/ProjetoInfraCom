@@ -9,7 +9,11 @@ public class ServerThreadManager implements Runnable {
 		this.client = client;
 	}
 	
-
+	public void auth(){
+		
+		
+	}
+	
 	public void run() {
 		//will do stuff like inputstream, outputstream
 		
