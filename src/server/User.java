@@ -5,13 +5,12 @@ public class User {//User basic data
 	private String password;
 	private boolean avaiable;
 	private String ip;
-	private String port;
 	
-	public User(String username,String password, String ip, String port) {
+	public User(String username,String password, String ip) {
 		this.username = username;
 		this.password = password;
 		this.ip = ip;
-		this.port = port;
+		
 		this.avaiable = false;
 	}
 	public String getUsername() {
@@ -38,11 +37,5 @@ public class User {//User basic data
 	public void setIp(String ip) {
 		this.ip = ip;
 	}
-	public String getPort() {
-		return port;
-	}
-	public void setPort(String port) {
-		this.port = port;
-	}
-	
+
 }
