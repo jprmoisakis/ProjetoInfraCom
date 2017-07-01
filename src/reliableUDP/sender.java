@@ -32,7 +32,7 @@ public class sender {
 
 		// Create a counter to count number of retransmissions and initialize window size
 		int retransmissionCounter = 0;
-		int windowSize = 128; // Static by now
+		int windowSize = 80; // Static by now
 
 		// Vector to store the sent messages
 		Vector <byte[]> sentMessageList = new Vector <byte[]>();
@@ -56,7 +56,6 @@ public class sender {
 			if ((i+1450) >= dataTransfer.length) {
 				lastMessageFlag = true;
 				int remain = dataTransfer.length - i;
-				
 				message[4] = (byte)(1);
 				message[5] = (byte)((remain >> 8) & 0xff);
 				message[6] = (byte)(remain);     
@@ -107,6 +106,7 @@ public class sender {
 							ackPacketReceived = true;
 						} catch (SocketTimeoutException e) {
 							ackPacketReceived = false;
+							//windowSize = (windowSize/2) + 1;
 							//System.out.println("Socket timed out while waiting for an acknowledgement");
 
 						}
@@ -138,6 +138,7 @@ public class sender {
 
 			// Send the message
 			socket.send(sendPacket);
+			//windowSize++;
 			System.out.println("Sent: Sequence number = " + sequenceNumber + ", Flag = " + lastMessageFlag);
 
 

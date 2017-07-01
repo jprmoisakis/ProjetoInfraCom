@@ -5,18 +5,26 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Random;
 
 public class receiver{
 	private int port;
+	private int lost;
 	private String hostName = "";
-	public receiver(int pt){
+	private int lostPacks = 0;
+	public receiver(int pt, int lostTrigger){
+		lost = lostTrigger;
 		port = pt;
 	}
 	public String getHostName(){
 		return hostName;
 	}
+	public int getLostPacks(){
+		return lostPacks;
+	}
 
     public long receive(byte [] dataReceived) throws IOException {
+    	Random gerador = new Random();
         // Create the socket, set the address and create the file to be sent
         DatagramSocket socket = new DatagramSocket(port);
         InetAddress address;
@@ -37,7 +45,14 @@ public class receiver{
             DatagramPacket receivedPacket = new DatagramPacket(message, message.length);
             socket.setSoTimeout(0);
             socket.receive(receivedPacket);
+            if(gerador.nextInt(101) < lost){
+            	lostPacks++;
+            	continue;
+            }
+            
+            
             message = receivedPacket.getData();
+            
             
             // Get port and address for sending ack
             address = receivedPacket.getAddress();
@@ -47,14 +62,16 @@ public class receiver{
             // Retrieve sequence number
             sequenceNumber = ((message[0] & 0xff) << 24) + ((message[1] & 0xff) << 16) + ((message[2] & 0xff) << 8) + (message[3] & 0xff);
 
-            // Retrieve the last message flag
-            if ((message[4] & 0xff) == 1) {
-                lastMessageFlag = true;
-            } else {
-                lastMessageFlag = false;
-            }
+            
 
             if (sequenceNumber == (lastSequenceNumber + 1)) {
+            	
+            	// Retrieve the last message flag
+                if ((message[4] & 0xff) == 1) {
+                    lastMessageFlag = true;
+                } else {
+                    lastMessageFlag = false;
+                }
 
                 // Update latest sequence number
                 lastSequenceNumber = sequenceNumber;
@@ -63,11 +80,10 @@ public class receiver{
                 // Retrieve data from message
                 for (int i=7; i < msgSize+7 ; i++) {
                     dataReceived[i-7+((sequenceNumber-1)*1450)] = message[i];
-                    System.out.println("            " + (i-7+((sequenceNumber-1)*1450)));
                 }               
                 receivedSize += msgSize;
     
-                System.out.println("Received: Sequence number = " + sequenceNumber +", Flag = " + lastMessageFlag);
+               System.out.println("Received: Sequence number = " + sequenceNumber +", Flag = " + lastMessageFlag);
 
                 // Send acknowledgement
                 sendAck(lastSequenceNumber, socket, address, port);
