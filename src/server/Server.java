@@ -6,6 +6,7 @@ import java.net.Socket;
 
 public class Server implements Runnable {
 	private ServerSocket rcpt;
+	private static UserRepository repository = new UserRepository();
 	
 	public Server(int port) throws IOException{//start listening
 		this.rcpt = new ServerSocket(port);
@@ -23,8 +24,16 @@ public class Server implements Runnable {
 				e.printStackTrace();
 			}
 		}
-		
-		
+			
 	}
+
+	public static UserRepository getRepository() {
+		return repository;
+	}
+
+	public static void setRepository(UserRepository repository) {
+		Server.repository = repository;
+	}
+	
 
 }
