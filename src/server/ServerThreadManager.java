@@ -24,10 +24,10 @@ public class ServerThreadManager implements Runnable {
 						this.signUp();
 						break;
 					case "login":
-						this.auth();
+						this.login();
 						break;
-					case "logoff":
-						this.logoff();
+					case "logout":
+						this.logout();
 						break;
 				}		
 			} catch (IOException e) {
@@ -41,7 +41,7 @@ public class ServerThreadManager implements Runnable {
 		try {
 			String username = in.readLine();
 			String password = in.readLine();
-			if(Server.getRepository().exists(username)){
+			if(Server.getRepository().getUser(username) != null){
 				out.writeBoolean(false);
 			}else{
 				User user = new User(username,password,"","");
@@ -54,16 +54,27 @@ public class ServerThreadManager implements Runnable {
 		
 		
 	}
-	public void auth(){
-			
+	public void login() throws IOException{//loga o usuario
+		String username = in.readLine();
+		String password = in.readLine();
+		
+		User user = Server.getRepository().getUser(username);
+		if(user != null && password == user.getPassword() && user.getAvaiable() == false){
+			Server.getRepository().getUser(username).setIp(client.getInetAddress().getHostAddress());
+			Server.getRepository().getUser(username).setPort(in.readLine());
+			Server.getRepository().getUser(username).setAvaiable(true);
+			out.writeBoolean(true);
+		}else{
+			out.writeBoolean(false);
+		}
 	}
 	
-	public void login(){
-		
-	}
-	
-	public void logoff(){
-		
+	public void logout() throws IOException{
+		String username = in.readLine();
+		if(Server.getRepository().getUser(username) != null){
+			Server.getRepository().getUser(username).setAvaiable(false);
+			out.writeBoolean(true);//desloga o cliente
+		}
 	}
 	
 	

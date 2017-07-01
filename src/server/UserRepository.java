@@ -37,4 +37,11 @@ public class UserRepository {// Manage users
 		}
 		return r;
 	}
+	public User getUser(String username){
+		User user = null;
+		for(int i = 0; i < this.index; i++){
+			if(this.users[i].getUsername() == username) user= this.users[i];
+		}
+		return user;
+	}
 }
