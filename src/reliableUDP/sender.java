@@ -2,23 +2,26 @@ package reliableUDP;
 
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.util.Vector;
 
 public class sender {
 	private String hostName;
 	private int port;
-	public sender(String host, int pt){
+	private DatagramSocket socket;
+	public sender(String host, int pt) throws SocketException{
 		port = pt;
 		hostName = host;
+		socket = new DatagramSocket();
 	}
 	public String getHostName(){
 		return hostName;
 	}
+	public void close(){
+		socket.close();
+	}
 	public void sendBytes( byte [] dataTransfer) throws IOException {
 		System.out.println("Sending the data...");
 
-		DatagramSocket socket = new DatagramSocket();
 		InetAddress address = InetAddress.getByName(hostName);
 
 		// Start timer for calculating throughput
@@ -29,10 +32,10 @@ public class sender {
 		int ackSequenceNumber = 0;
 		int lastAckedSequenceNumber = 0;
 		boolean lastAcknowledgedFlag = false;
-
+		int windowCount = 0;
 		// Create a counter to count number of retransmissions and initialize window size
 		int retransmissionCounter = 0;
-		int windowSize = 80; // Static by now
+		int windowSize = 50; // Static by now
 
 		// Vector to store the sent messages
 		Vector <byte[]> sentMessageList = new Vector <byte[]>();
@@ -106,7 +109,6 @@ public class sender {
 							ackPacketReceived = true;
 						} catch (SocketTimeoutException e) {
 							ackPacketReceived = false;
-							//windowSize = (windowSize/2) + 1;
 							//System.out.println("Socket timed out while waiting for an acknowledgement");
 
 						}
@@ -139,7 +141,7 @@ public class sender {
 			// Send the message
 			socket.send(sendPacket);
 			//windowSize++;
-			System.out.println("Sent: Sequence number = " + sequenceNumber + ", Flag = " + lastMessageFlag);
+			System.out.println("Sent: Sequence number = " + sequenceNumber + ", Flag = " + lastMessageFlag + ", Window = " + windowSize);
 
 
 			// Check for acknowledgements
@@ -153,9 +155,16 @@ public class sender {
 					socket.receive(ackpack);
 					ackSequenceNumber = ((ack[0] & 0xff) << 24) + ((ack[1] & 0xff) << 16) + ((ack[2] & 0xff) << 8) + (ack[3] & 0xff);
 					ackPacketReceived = true;
+					windowSize++;
 				} catch (SocketTimeoutException e) {
 					//System.out.println("Socket timed out waiting for an ack");
 					ackPacketReceived = false;
+					if(windowCount > 5){
+						windowSize = (windowSize/2) + 1;
+						windowCount = 0;
+					} else {
+						windowCount++;
+					}
 					//e.printStackTrace();
 					break;
 				}
@@ -220,9 +229,6 @@ public class sender {
 				}
 			}
 		}
-
-		socket.close();
-
 		// Calculate the average throughput
 		int fileSizeKB = (dataTransfer.length) / 1457;
 		long transferTime = timer.getTimeElapsed() / 1000;

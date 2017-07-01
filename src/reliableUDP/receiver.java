@@ -2,9 +2,6 @@ package reliableUDP;
 
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Random;
 
 public class receiver{
@@ -12,9 +9,11 @@ public class receiver{
 	private int lost;
 	private String hostName = "";
 	private int lostPacks = 0;
-	public receiver(int pt, int lostTrigger){
+	private DatagramSocket socket;
+	public receiver(int pt, int lostTrigger) throws SocketException{
 		lost = lostTrigger;
 		port = pt;
+		socket = new DatagramSocket(port);
 	}
 	public String getHostName(){
 		return hostName;
@@ -22,11 +21,14 @@ public class receiver{
 	public int getLostPacks(){
 		return lostPacks;
 	}
+	
+	public void close(){
+		socket.close();
+	}
 
     public long receive(byte [] dataReceived) throws IOException {
     	Random gerador = new Random();
         // Create the socket, set the address and create the file to be sent
-        DatagramSocket socket = new DatagramSocket(port);
         InetAddress address;
 
         // Create a flag to indicate the last message
