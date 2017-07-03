@@ -6,6 +6,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.JTextField;
+import javax.swing.JTextPane;
 
 import reliableUDP.receiver;
 
@@ -15,11 +17,16 @@ public class Server implements Runnable {/*para cada pessoa nova que se conectar
 	private List<MsgManager> msgManagerRepository;
 	private receiver receiver;
 	private byte[] array;
+	private JTextPane textPane;
 	
-	public Server() throws SocketException{
-		this.receiver = new receiver(5001,0);
+	public Server(int port,JTextPane textPane) throws SocketException{
+		this.receiver = new receiver(port,0);
 		this.array = new byte[10000];
 		this.msgManagerRepository = new ArrayList<MsgManager>();
+		this.textPane = textPane;
+		LabelThread thread= new LabelThread(this.textPane,this.repository);
+		Thread t = new Thread(thread);
+		t.start();
 	}
 
 	public void run() {

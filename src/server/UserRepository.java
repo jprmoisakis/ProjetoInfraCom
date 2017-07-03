@@ -44,4 +44,12 @@ public class UserRepository {// Manage users
 		}
 		return user;
 	}
+	public String onlineUsersListToString(){
+		String toString = "";
+		for(int i = 0; i<this.index;i++){
+			if(this.users[i].getAvaiable() == true){
+				toString = users[i].getUsername() + "          " + users[i].getIp() +"\n";			}
+		}
+		return toString;
+	}
 }

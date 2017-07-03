@@ -93,6 +93,11 @@ public class ServerThreadManager implements Runnable {
 			e.printStackTrace();
 		}
 	}
+	
+	public void shutDown(){
+		
+	}
+	
 /*	
 	public void startConnection(){//inicia conexão
 		try {
