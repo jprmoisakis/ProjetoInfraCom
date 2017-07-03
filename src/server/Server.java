@@ -1,7 +1,6 @@
 package server;
 
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -38,7 +37,7 @@ public class Server implements Runnable {/*para cada pessoa nova que se conectar
 					msgManagerRepository.add(tableQueue);
 					int index = msgManagerRepository.indexOf(tableQueue);
 					msgManagerRepository.get(index).getQueue().put(input);//coloca a mensagem na fila
-					ServerThreadManager multUser = new ServerThreadManager(msgManagerRepository.get(index).getQueue());
+					ServerThreadManager multUser = new ServerThreadManager(msgManagerRepository.get(index).getQueue(),hostName);
 					Thread t = new Thread(multUser);
 					t.start();
 				}

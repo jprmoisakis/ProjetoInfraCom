@@ -1,30 +1,28 @@
 package server;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
-import reliableUDP.receiver;
+import java.util.concurrent.BlockingQueue;	
 import reliableUDP.sender;
 
 public class ServerThreadManager implements Runnable {
 	private User user;
-	private receiver receiver;
 	private sender sender;
-	private byte[] array;
+	private BlockingQueue<String> queue;
+	private String hostName;
 	
-	public ServerThreadManager(){
+	public ServerThreadManager(BlockingQueue<String> queue,String hostName) throws SocketException{
 		this.user= null;
-		this.array = new byte[10000];
-		this.receiver = new receiver(5001,0);
-		//startConnection();
+		this.queue = queue;
+		this.hostName = hostName;
 	}
 
 	public void run() {//seletor
 		while(true){//melhorar isso?
 			String input;
 			try {
-				long bytes = receiver.receive(array);
-				this.sender = new sender(receiver.getHostName(),5001);//depois de receber o pacote define pra quem será feito o envio
-				input = new String(array, StandardCharsets.UTF_8);
+				input = queue.take();
 				switch(input){
 					case "signup":
 						this.signUp();
@@ -39,43 +37,34 @@ public class ServerThreadManager implements Runnable {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}			
 		}
 	}
 	
-	public void signUp(){//cadastra
-		try {
-			long bytesUsername = receiver.receive(array);
-			String username = new String(array, StandardCharsets.UTF_8);
-			
-			long bytesPassword = receiver.receive(array);
-			String password = new String(array, StandardCharsets.UTF_8);
-			
-			if(Server.getRepository().getUser(username) != null){
-				sendMsg("duplicateuser");
-			}else{
-				User user = new User(username,password,"");
-				Server.getRepository().add(user);
-				sendMsg("signupok");
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	public void signUp() throws InterruptedException{//cadastra
+		String username = queue.take();
+		String password = queue.take();
 		
-		
+		if(Server.getRepository().getUser(username) != null){
+			sendMsg("duplicateuser");
+		}else{
+			User user = new User(username,password,"");
+			Server.getRepository().add(user);
+			sendMsg("signupok");
+		}	
 	}
-	public void login() throws IOException{//loga o usuario
-		long bytesUsername = receiver.receive(array);
-		String username = new String(array, StandardCharsets.UTF_8);
-		
-		long bytesPassword = receiver.receive(array);
-		String password = new String(array, StandardCharsets.UTF_8);
+	
+	public void login() throws IOException, InterruptedException{//loga o usuario
+		String username = queue.take();
+		String password = queue.take();
 		
 		User user = Server.getRepository().getUser(username);
 		if(user != null && password == user.getPassword()){
 			if(user.getAvaiable() == false){
-				Server.getRepository().getUser(username).setIp(this.receiver.getHostName());
+				Server.getRepository().getUser(username).setIp(hostName);
 				Server.getRepository().getUser(username).setAvaiable(true);
 				this.user = Server.getRepository().getUser(username);
 				sendMsg("logged");
@@ -88,16 +77,16 @@ public class ServerThreadManager implements Runnable {
 		}
 	}
 	
-	public void logout() throws IOException{
-		long bytes = receiver.receive(array);
-		String username = new String(array, StandardCharsets.UTF_8);
+	public void logout() throws IOException, InterruptedException{
+		String username = queue.take();
 		if(Server.getRepository().getUser(username) != null){
 			Server.getRepository().getUser(username).setAvaiable(false);
 			sendMsg("logout");
 		}
 	}
+	
 	public void sendMsg(String message){//envia o estado da ação
-		array = message.getBytes(StandardCharsets.UTF_8);
+		byte[] array = message.getBytes(StandardCharsets.UTF_8);
 		try {
 			sender.sendBytes(array);
 		} catch (IOException e) {
