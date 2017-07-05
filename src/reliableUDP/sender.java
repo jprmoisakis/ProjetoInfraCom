@@ -1,4 +1,3 @@
-package reliableUDP;
 
 import java.io.*;
 import java.net.*;
@@ -8,13 +7,24 @@ public class sender {
 	private String hostName;
 	private int port;
 	private DatagramSocket socket;
+	private long estimatedRTT = 0;
+	private int sequenceNumber = 0;
+	private int ackSequenceNumber = 0;
+	private int lastAckedSequenceNumber = 0;
 	public sender(String host, int pt) throws SocketException{
 		port = pt;
 		hostName = host;
 		socket = new DatagramSocket();
+		estimatedRTT = 0;
+		sequenceNumber = 0;
+		ackSequenceNumber = 0;
+		lastAckedSequenceNumber = 0;
 	}
 	public String getHostName(){
 		return hostName;
+	}
+	public long getRTT(){
+		return this.estimatedRTT;
 	}
 	public void close(){
 		socket.close();
@@ -23,31 +33,35 @@ public class sender {
 		System.out.println("Sending the data...");
 
 		InetAddress address = InetAddress.getByName(hostName);
-
+		
 		// Start timer for calculating throughput
-		StartTime timer = new StartTime(0);
-
-		int sequenceNumber = 0;
+		long timerTotal = System.nanoTime();
+		long RTTCalc = 0;
+		int lastAckedSequenceNumberLocal = lastAckedSequenceNumber;
+		//int sequenceNumberLocal = 0;
+		
 		boolean lastMessageFlag = false;
-		int ackSequenceNumber = 0;
-		int lastAckedSequenceNumber = 0;
 		boolean lastAcknowledgedFlag = false;
 		int windowCount = 0;
+		boolean checkRTT = true;
+		int sequenceRTT = 0;
+		long nowRTT = 0;
+		
 		// Create a counter to count number of retransmissions and initialize window size
 		int retransmissionCounter = 0;
-		int windowSize = 50; // Static by now
+		int windowSize = 10; // Static by now
 
 		// Vector to store the sent messages
 		Vector <byte[]> sentMessageList = new Vector <byte[]>();
 
 		// For as each message we will create
-		for (int i=0; i < dataTransfer.length; i = i+1450 ) {
+		for (int i=0; i < dataTransfer.length; i = i+4450) {
 
 			// Increment sequence number
 			sequenceNumber += 1;
-
+			//sequenceNumberLocal += 1;
 			// Array for message
-			byte[] message = new byte[1457];
+			byte[] message = new byte[4457];
 
 			// Set the first and second bytes of the message to the sequence number
 			message[0] = (byte)(sequenceNumber >> 24);
@@ -56,25 +70,25 @@ public class sender {
 			message[3] = (byte)(sequenceNumber);
 
 			// Set flag to 1 if packet is last packet and store it in third byte of header
-			if ((i+1450) >= dataTransfer.length) {
+			if ((i+4450) >= dataTransfer.length) {
 				lastMessageFlag = true;
 				int remain = dataTransfer.length - i;
 				message[4] = (byte)(1);
 				message[5] = (byte)((remain >> 8) & 0xff);
-				message[6] = (byte)(remain);     
+				message[6] = (byte)(remain);
                 
 			} else { // If not last message store flag as 0
 				lastMessageFlag = false;
 				message[4] = (byte)(0);
 				
-				message[5] = (byte)((1450 >> 8)& 0xff);
-				message[6] = (byte)((1450 & 0xff));
+				message[5] = (byte)((4450 >> 8)& 0xff);
+				message[6] = (byte)((4450 & 0xff));
 				
 			}
-
+			//System.out.println("  -------" + (((message[5] & 0xff) << 8) + ((message[6]) & 0xff)));
 			// Copy the bytes for the message to the message array
 			if (!lastMessageFlag) {
-				for (int j=0; j != 1450; j++) {
+				for (int j=0; j < 4450; j++) {
 					message[j+7] = dataTransfer[i+j];
 				}
 			}
@@ -107,6 +121,14 @@ public class sender {
 							socket.receive(ackpack);
 							ackSequenceNumber = ((ack[0] & 0xff) << 24) + ((ack[1] & 0xff) << 16) + ((ack[2] & 0xff) << 8) + (ack[3] & 0xff);
 							ackPacketReceived = true;
+							if(ackSequenceNumber >= sequenceRTT && checkRTT == false){
+								nowRTT = ((System.nanoTime() - RTTCalc)/1000000);
+				            	if(estimatedRTT != 0)
+									estimatedRTT = (estimatedRTT + nowRTT + nowRTT)/3 ;
+								else
+									estimatedRTT = nowRTT;
+								checkRTT = true;
+							}
 						} catch (SocketTimeoutException e) {
 							ackPacketReceived = false;
 							//System.out.println("Socket timed out while waiting for an acknowledgement");
@@ -121,11 +143,11 @@ public class sender {
 							System.out.println("Ack recieved: Sequence Number = " + ackSequenceNumber);
 							break; 	// Break if there is an ack so the next packet can be sent
 						} else { // Resend the packet
-							System.out.println("Resending: Sequence Number = " + sequenceNumber);
+							//System.out.println("Resending: Sequence Number = " + sequenceNumber);
 							// Resend the packet following the last acknowledged packet and all following that (cumulative acknowledgement)
 							for (int y=0; y != (sequenceNumber - lastAckedSequenceNumber); y++) {
-								byte[] resendMessage = new byte[1457];
-								resendMessage = sentMessageList.get(y + lastAckedSequenceNumber);
+								byte[] resendMessage = new byte[4457];
+								resendMessage = sentMessageList.get(y + (lastAckedSequenceNumber-lastAckedSequenceNumberLocal));
 
 								DatagramPacket resendPacket = new DatagramPacket(resendMessage, resendMessage.length, address, port);
 								socket.send(resendPacket);
@@ -138,24 +160,37 @@ public class sender {
 				}
 			}
 
-			// Send the message
+			// Enviar mensagem
 			socket.send(sendPacket);
-			//windowSize++;
+			if(checkRTT){
+				RTTCalc = System.nanoTime();
+				sequenceRTT = sequenceNumber;
+				checkRTT = false;
+			}
+			
 			System.out.println("Sent: Sequence number = " + sequenceNumber + ", Flag = " + lastMessageFlag + ", Window = " + windowSize);
 
 
-			// Check for acknowledgements
+			// Ver ACKs
 			while (true) {
 				boolean ackPacketReceived = false;
 				byte[] ack = new byte[4];
 				DatagramPacket ackpack = new DatagramPacket(ack, ack.length);
 
 				try {
-					socket.setSoTimeout(10);
+					socket.setSoTimeout(1);
 					socket.receive(ackpack);
 					ackSequenceNumber = ((ack[0] & 0xff) << 24) + ((ack[1] & 0xff) << 16) + ((ack[2] & 0xff) << 8) + (ack[3] & 0xff);
 					ackPacketReceived = true;
 					windowSize++;
+					if(ackSequenceNumber >= sequenceRTT && checkRTT == false){
+						nowRTT = ((System.nanoTime() - RTTCalc)/1000000);
+		            	if(estimatedRTT != 0)
+							estimatedRTT = (estimatedRTT + nowRTT + nowRTT)/3 ;
+						else
+							estimatedRTT = nowRTT;
+						checkRTT = true;
+					}
 				} catch (SocketTimeoutException e) {
 					//System.out.println("Socket timed out waiting for an ack");
 					ackPacketReceived = false;
@@ -191,7 +226,7 @@ public class sender {
 				DatagramPacket ackpack = new DatagramPacket(ack, ack.length);
 
 				try {
-					socket.setSoTimeout(50);
+					socket.setSoTimeout(70);
 					socket.receive(ackpack);
 					ackSequenceNumber = ((ack[0] & 0xff) << 24) + ((ack[1] & 0xff) << 16) + ((ack[2] & 0xff) << 8) + (ack[3] & 0xff);
 					ackPacketReceived = true;
@@ -217,11 +252,11 @@ public class sender {
 				} else { // Resend the packet
 					// Resend the packet following the last acknowledged packet and all following that (cumulative acknowledgement)
 					for (int j=0; j != (sequenceNumber-lastAckedSequenceNumber); j++) {
-						byte[] resendMessage = new byte[1457];
-						resendMessage = sentMessageList.get(j + lastAckedSequenceNumber);
+						byte[] resendMessage = new byte[4457];
+						resendMessage = sentMessageList.get(j + (lastAckedSequenceNumber-lastAckedSequenceNumberLocal));
 						DatagramPacket resendPacket = new DatagramPacket(resendMessage, resendMessage.length, address, port);
 						socket.send(resendPacket);
-						System.out.println("Resending: Sequence Number = " + lastAckedSequenceNumber);
+						//System.out.println("Resending: Sequence Number = " + lastAckedSequenceNumber);
 
 						// Increment retransmission counter
 						retransmissionCounter += 1;
@@ -230,8 +265,8 @@ public class sender {
 			}
 		}
 		// Calculate the average throughput
-		int fileSizeKB = (dataTransfer.length) / 1457;
-		long transferTime = timer.getTimeElapsed() / 1000;
+		int fileSizeKB = (dataTransfer.length) / 4457;
+		long transferTime = (System.nanoTime() - timerTotal) / (1000*1000*1000);
 		double throughput = (double) fileSizeKB / transferTime;
 		System.out.println("File size: " + fileSizeKB + "KB, Transfer time: " + transferTime + " seconds. Throughput: " + throughput + "KBps");
 		System.out.println("Number of retransmissions: " + retransmissionCounter);
